@@ -1,33 +1,31 @@
 // Importar dependencias y modulos
-const bcrypt = require("bcrypt")
-
+const bcrypt = require("bcrypt");
+const mongoosePagination = require("mongoose-pagination");
 // Importar modelos
-const User = require("../models/user")
+const User = require("../models/user");
 
 // Importar servicios
-const jwt = require("../services/jwt")
-
-
+const jwt = require("../services/jwt");
 
 // Acciones de prueba
 const pruebaUser = (req, res) => {
-    return res.status(200).send({
+  return res.status(200).send({
     mensaje: "Mensaje enviado desde: controller/user.js",
-    usuario: req.user
-  })
-}
+    usuario: req.user,
+  });
+};
 
 // Regristro de usuarios
 const register = (req, res) => {
   // Recoger datos de la peticion
-  let params = req.body
+  let params = req.body;
 
   // Comprobar que me llegan bien (+ validación)
   if (!params.name || !params.email || !params.password || !params.nick) {
     return res.status(400).json({
       status: "error",
       message: "Faltan datos por enviar",
-    })
+    });
   }
   /*
     // Validación avanzada
@@ -50,53 +48,54 @@ const register = (req, res) => {
     if (error)
       return res
         .status(500)
-        .json({ status: "error", message: "Error en la consulta de usuarios" })
+        .json({ status: "error", message: "Error en la consulta de usuarios" });
 
     if (users && users.length >= 1) {
       return res.status(200).send({
         status: "success",
         message: "El usuario ya existe",
-      })
+      });
     }
 
     // Cifrar la contraseña
-    let pwd = await bcrypt.hash(params.password, 10)
-    params.password = pwd
+    let pwd = await bcrypt.hash(params.password, 10);
+    params.password = pwd;
 
     // Crear objeto de usuario
-    let user_to_save = new User(params)
+    let user_to_save = new User(params);
 
     // Guardar usuario en la bbdd
     user_to_save.save((error, userStored) => {
       if (error || !userStored)
         return res
           .status(500)
-          .send({ status: "error", message: "Error al guardar el ususario" })
+          .send({ status: "error", message: "Error al guardar el ususario" });
 
       // añadido
-      userStored.toObject()
-      delete userStored.password
-      delete userStored.role
+      userStored.toObject();
+      delete userStored.password;
+      delete userStored.role;
 
       // Devolver resultado
       return res.status(200).json({
         status: "success",
         message: "Usuario registrado correctamente",
         user: userStored,
-      })
-    })
-  })
-}
+      });
+    });
+  });
+};
+
 // Login de usuarios
 const login = (req, res) => {
   // Recoger parametros body
-  let params = req.body
+  let params = req.body;
 
   if (!params.email || !params.password) {
     return res.status(400).send({
       status: "error",
       message: "Faltan datos por enviar",
-    })
+    });
   }
 
   // Buscar en la bbdd si existe
@@ -106,21 +105,20 @@ const login = (req, res) => {
       if (error || !user)
         return res
           .status(404)
-          .send({ status: "error", message: "No existe el usuario" })
-          
-          // Comprobar su contraseña
-          const pwd = bcrypt.compareSync(params.password, user.password)
+          .send({ status: "error", message: "No existe el usuario" });
 
-          if (!pwd) {
-              return res.status(400).send({
-                  status: "error",
-                  message: "No te has identificado correctamente"
-              })
-          }
+      // Comprobar su contraseña
+      const pwd = bcrypt.compareSync(params.password, user.password);
 
-          // Conseguir Token
-          const token = jwt.createToken(user)
+      if (!pwd) {
+        return res.status(400).send({
+          status: "error",
+          message: "No te has identificado correctamente",
+        });
+      }
 
+      // Conseguir Token
+      const token = jwt.createToken(user);
 
       // Devolver Datos del usuario
       return res.status(200).send({
@@ -131,12 +129,11 @@ const login = (req, res) => {
           name: user.name,
           nick: user.nick,
         },
-        token
-      })
-    })
+        token,
+      });
+    });
+};
 
-
-}
 // perfil de usuario
 const profile = (req, res) => {
   // Recibir el parametro del id de usuario por la url
@@ -146,29 +143,68 @@ const profile = (req, res) => {
   //const userProfile = await User.findById(id);
 
   User.findById(id)
-      .select({ password: 0, role: 0 })
-      .exec(async (error, userProfile) => {
-          if (error || !userProfile) {
-              return res.status(404).send({
-                  status: "error",
-                  message: "El usuario no existe o hay un error"
-              });
-          }
+    .select({ password: 0, role: 0 })
+    .exec(async (error, userProfile) => {
+      if (error || !userProfile) {
+        return res.status(404).send({
+          status: "error",
+          message: "El usuario no existe o hay un error",
+        });
+      }
 
-          // Info de seguimiento
-          //const followInfo = await followService.followThisUser(req.user.id, id);
+      // Info de seguimiento
+      //const followInfo = await followService.followThisUser(req.user.id, id);
 
-          // Devolver el resultado 
-          return res.status(200).send({
-              status: "success",
-              user: userProfile,
-              //following: followInfo.following,
-              //follower: followInfo.follower
-          });
-
+      // Devolver el resultado
+      return res.status(200).send({
+        status: "success",
+        user: userProfile,
+        //following: followInfo.following,
+        //follower: followInfo.follower
       });
+    });
+};
 
-}
+// Listar Usuarios
+const list = (req, res) => {
+  // Controlar en que pagina estamos
+  let page = 1;
+  if (req.params.page) {
+    page = req.params.page;
+  }
+  page = parseInt(page);
+
+  // Consulta con mongoose paginate
+  let itemsPerPage = 5;
+
+  User.find()
+    //.select("-password -email -role -__v")
+    .sort("_id")
+    .paginate(page, itemsPerPage, async (error, users, total) => {
+      if (error || !users) {
+        return res.status(404).send({
+          status: "error",
+          message: "No hay usuarios disponibles",
+          error,
+        });
+      }
+
+      // Sacar un array de ids de los usuarios que me siguen y los que sigo como victor
+      //let followUserIds = await followService.followUserIds(req.user.id);
+
+      // Devolver el resultado (posteriormente info follow)
+      return res.status(200).send({
+        status: "success",
+        users,
+        page,
+        itemsPerPage,
+        total,
+        pages: Math.ceil(total / itemsPerPage),
+        //user_following: followUserIds.following,
+        //user_follow_me: followUserIds.followers,
+      });
+    });
+};
 
 // Exportar acciones
 module.exports = {
@@ -176,4 +212,5 @@ module.exports = {
   register,
   login,
   profile,
-}
+  list,
+};
