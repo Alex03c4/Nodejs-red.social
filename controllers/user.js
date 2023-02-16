@@ -1,6 +1,9 @@
 // Importar dependencias y modulos
 const bcrypt = require("bcrypt");
 const mongoosePagination = require("mongoose-pagination");
+const fs = require("fs");
+const path = require("path");
+
 // Importar modelos
 const User = require("../models/user");
 
@@ -37,8 +40,7 @@ const register = (req, res) => {
             message: "Valición no superada",
         })
     }
-*/
-  // Control usuarios duplicados
+ */ // Control usuarios duplicados
   User.find({
     $or: [
       { email: params.email.toLowerCase() },
@@ -84,7 +86,7 @@ const register = (req, res) => {
       });
     });
   });
-};
+}// End register
 
 // Login de usuarios
 const login = (req, res) => {
@@ -132,7 +134,7 @@ const login = (req, res) => {
         token,
       });
     });
-};
+}// fin de login
 
 // perfil de usuario
 const profile = (req, res) => {
@@ -163,7 +165,7 @@ const profile = (req, res) => {
         //follower: followInfo.follower
       });
     });
-};
+}// fin de perfil de usuario
 
 // Listar Usuarios
 const list = (req, res) => {
@@ -204,7 +206,169 @@ const list = (req, res) => {
         //user_follow_me: followUserIds.followers,
       });
     });
-};
+}// end list
+
+// Actualizar usuario
+const update = (req, res) => {
+  // Recoger info del usuario a actualizar
+  let userIdentity = req.user;
+  let userToUpdate = req.body;
+
+  //console.log('userToUpdate = ',userToUpdate);
+  //console.log('userIdentity = ',userIdentity);
+
+  // Eliminar campos sobrantes
+  delete userToUpdate.iat;
+  delete userToUpdate.exp;
+  delete userToUpdate.role;
+  delete userToUpdate.image;
+
+  // Comprobar si el usuario ya existe
+  User.find({
+    $or: [
+      { email: userToUpdate.email.toLowerCase() },
+      { nick: userToUpdate.nick.toLowerCase() },
+    ],
+  }).exec(async (error, users) => {
+    if (error)
+      return res
+        .status(500)
+        .json({ status: "error", message: "Error en la consulta de usuarios" });
+
+    let userIsset = false;
+    users.forEach((user) => {
+      if (user && user._id != userIdentity.id) userIsset = true;
+    });
+
+    if (userIsset) {
+      return res.status(200).send({
+        status: "success",
+        message: "El usuario ya existe",
+      });
+    }
+
+    // Cifrar la contraseña
+    if (userToUpdate.password) {
+      let pwd = await bcrypt.hash(userToUpdate.password, 10);
+      userToUpdate.password = pwd;
+
+      //añadido
+    } else {
+      delete userToUpdate.password;
+    }
+
+    // Buscar y actualizar
+    try {
+      let userUpdated = await User.findByIdAndUpdate(
+        { _id: userIdentity.id },
+        userToUpdate,
+        { new: true }
+      );
+
+      if (!userUpdated) {
+        return res
+          .status(400)
+          .json({ status: "error", message: "Error al actualizar" });
+      }
+
+      // Devolver respuesta
+      return res.status(200).send({
+        status: "success",
+        message: "Metodo de actualizar usuario",
+        user: userUpdated,
+      });
+    } catch (error) {
+      return res.status(500).send({
+        status: "error",
+        message: "Error al actualizar",
+      });
+    }
+  });
+}// fin de update
+
+// Subir Imágenes
+const upload = (req, res) => {
+  // Recoger el fichero de imagen y comprobar que existe
+  if (!req.file) {
+    return res.status(404).send({
+      status: "error",
+      message: "Petición no incluye la imagen",
+    });
+  }
+
+  // Conseguir el nombre del archivo
+  let image = req.file.originalname;
+
+  // Sacar la extension del archivo
+  const imageSplit = image.split(".");
+  const extension = imageSplit[1];
+
+  // Comprobar extension
+  if (
+    extension != "png" &&
+    extension != "jpg" &&
+    extension != "jpeg" &&
+    extension != "gif"
+  ) {
+    // Borrar archivo subido
+    const filePath = req.file.path;
+    const fileDeleted = fs.unlinkSync(filePath);
+
+    // Devolver respuesta negativa
+    return res.status(400).send({
+      status: "error",
+      message: "Extensión del fichero invalida",
+    });
+  }
+
+  // Si si es correcta, guardar imagen en bbdd
+  User.findOneAndUpdate({ _id: req.user.id }, { image: req.file.filename }, { new: true }, (error, userUpdated) => {
+    if (error || !userUpdated) {
+        return res.status(500).send({
+            status: "error",
+            message: "Error en la subida del avatar"
+        })
+    }
+
+    // Devolver respuesta
+    return res.status(200).send({
+        status: "success",
+        user: userUpdated,
+        file: req.file,
+    });
+});
+
+}//fin de upload
+
+// sacar el avatar 
+const avatar = (req, res) =>{
+    // Sacar el parametro de la url
+    const file = req.params.file;
+
+    // Montar el path real de la imagen
+    const filePath = "./uploads/avatars/" + file;
+
+    // Comprobar que existe
+    fs.stat(filePath, (error, exists) => {
+
+        if (!exists) {
+            return res.status(404).send({
+                status: "error",
+                message: "No existe la imagen"
+            });
+        }
+
+        // Devolver un file
+        return res.sendFile(path.resolve(filePath));
+    });
+
+  
+
+
+
+}//Fin de avatar
+
+
 
 // Exportar acciones
 module.exports = {
@@ -213,4 +377,7 @@ module.exports = {
   login,
   profile,
   list,
+  update,
+  upload,
+  avatar
 };

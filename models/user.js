@@ -1,4 +1,4 @@
-const {Schema, model} = require("mongoose");
+const {Schema, model} = require("mongoose")
 
 const UserSchema = Schema({
     name: {
@@ -8,7 +8,7 @@ const UserSchema = Schema({
     
     surname: String,
     
-    //	bio: String,
+    bio: String,
     
     
     nick: {
@@ -38,5 +38,5 @@ const UserSchema = Schema({
     }
 });
 
-module.exports = model("User", UserSchema, "users");
+module.exports = model("User", UserSchema, "users")
                                 // Coleccion: users
