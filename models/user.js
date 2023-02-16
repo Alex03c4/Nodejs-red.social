@@ -36,7 +36,7 @@ const UserSchema = Schema({
         type: Date,
         default: Date.now
     }
-});
+})
 
 module.exports = model("User", UserSchema, "users")
                                 // Coleccion: users
