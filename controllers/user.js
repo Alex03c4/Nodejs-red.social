@@ -9,7 +9,7 @@ const User = require("../models/user")
 
 // Importar servicios
 const jwt = require("../services/jwt")
-
+const followService = require("../services/followService");
 // Acciones de prueba
 const pruebaUser = (req, res) => {
   return res.status(200).send({
@@ -155,14 +155,14 @@ const profile = (req, res) => {
       }
 
       // Info de seguimiento
-      //const followInfo = await followService.followThisUser(req.user.id, id)
+      const followInfo = await followService.followThisUser(req.user.id, id)
 
       // Devolver el resultado
       return res.status(200).send({
         status: "success",
         user: userProfile,
-        //following: followInfo.following,
-        //follower: followInfo.follower
+        following: followInfo.following,
+        follower: followInfo.follower
       })
     })
 }// fin de perfil de usuario
@@ -192,7 +192,7 @@ const list = (req, res) => {
       }
 
       // Sacar un array de ids de los usuarios que me siguen y los que sigo como victor
-      //let followUserIds = await followService.followUserIds(req.user.id)
+      let followUserIds = await followService.followUserIds(req.user.id)
 
       // Devolver el resultado (posteriormente info follow)
       return res.status(200).send({
@@ -202,8 +202,8 @@ const list = (req, res) => {
         itemsPerPage,
         total,
         pages: Math.ceil(total / itemsPerPage),
-        //user_following: followUserIds.following,
-        //user_follow_me: followUserIds.followers,
+        user_following: followUserIds.following,
+        user_follow_me: followUserIds.followers,
       })
     })
 }// end list

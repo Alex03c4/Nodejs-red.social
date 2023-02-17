@@ -1,4 +1,4 @@
-// Importar modulos
+// Importar módulos
 const jwt = require("jwt-simple")
 const moment = require("moment")
 
@@ -6,7 +6,7 @@ const moment = require("moment")
 const libjwt = require("../services/jwt")
 const secret = libjwt.secret
 
-// MIDDLEWARE de autenticacion
+// MIDDLEWARE de autenticación
 exports.auth = (req, res, next) => {
     // Comprobar si me llega la cabecera de auth
     if(!req.headers.authorization){
@@ -22,7 +22,7 @@ exports.auth = (req, res, next) => {
     // Decodificar token
     try{
         let payload = jwt.decode(token, secret)
-        // Comprobar expiracion del token
+        // Comprobar expiración del token
         if(payload.exp <= moment().unix()){
             return res.status(401).send({
                 status: "error",
@@ -41,7 +41,7 @@ exports.auth = (req, res, next) => {
         })
     }
 
-    // Pasar a ejecucion de accion
+    // Pasar a ejecución de acción
     next()
 }
 
