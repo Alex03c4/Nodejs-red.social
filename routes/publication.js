@@ -4,7 +4,7 @@ const multer = require("multer")
 
 const PublicationController = require("../controllers/publication")
 const check = require("../middlewares/auth")
-/*
+
 
 
 // Configuracion de subida
@@ -18,7 +18,7 @@ const storage = multer.diskStorage({
 })
 
 const uploads = multer({storage})
-*/
+
 
 
 
@@ -28,9 +28,9 @@ router.post("/save", check.auth, PublicationController.save)
 router.get("/detail/:id", check.auth, PublicationController.detail)
 router.delete("/remove/:id", check.auth, PublicationController.remove)
 router.get("/user/:id/:page?", check.auth, PublicationController.user)
-//router.post("/upload/:id", [check.auth, uploads.single("file0")], PublicationController.upload)
-//router.get("/media/:file", PublicationController.media) //cambio
-//router.get("/feed/:page?", check.auth, PublicationController.feed)
+router.post("/upload/:id", [check.auth, uploads.single("file0")], PublicationController.upload)
+router.get("/media/:file", PublicationController.media) //cambio
+router.get("/feed/:page?", check.auth, PublicationController.feed)
 
  // Exportar router
 module.exports = router

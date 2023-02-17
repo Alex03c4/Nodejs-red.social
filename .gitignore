@@ -1,4 +1,5 @@
 # dependencies
 node_modules
 #Crear esta carpeta para las imagenes 
-uploads/avatars
+#uploads/avatars
+#uploads/publications

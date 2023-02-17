@@ -27,6 +27,6 @@ const uploads = multer({storage})
  router.put("/update", check.auth, UserController.update)
  router.post("/upload", [check.auth, uploads.single("file0")], UserController.upload)
  router.get("/avatar/:file", UserController.avatar) // cambio
-
+ router.get("/counters/:id?", check.auth, UserController.counters)   
  // Exportar router
 module.exports = router

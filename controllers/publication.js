@@ -133,6 +133,134 @@ const user = (req, res) => {
 }// fin de user
 
 
+// Subir ficheros
+const upload = (req, res) => {
+    // Sacar publication id
+    const publicationId = req.params.id
+
+    // Recoger el fichero de imagen y comprobar que existe
+    if (!req.file) {
+        return res.status(404).send({
+            status: "error",
+            message: "Petición no incluye la imagen"
+        })
+    }
+
+    // Conseguir el nombre del archivo
+    let image = req.file.originalname
+
+    // Sacar la extension del archivo
+    const imageSplit = image.split("\.")
+    const extension = imageSplit[1]
+
+    // Comprobar extension
+    if (extension != "png" && extension != "jpg" && extension != "jpeg" && extension != "gif") {
+
+        // Borrar archivo subido
+        const filePath = req.file.path
+        const fileDeleted = fs.unlinkSync(filePath)
+
+        // Devolver respuesta negativa
+        return res.status(400).send({
+            status: "error",
+            message: "Extensión del fichero invalida"
+        })
+    }
+
+    // Si si es correcta, guardar imagen en bbdd
+    Publication.findOneAndUpdate({ "user": req.user.id, "_id": publicationId }, { file: req.file.filename }, { new: true }, (error, publicationUpdated) => {
+        if (error || !publicationUpdated) {
+            return res.status(500).send({
+                status: "error",
+                message: "Error en la subida del avatar"
+            })
+        }
+
+        // Devolver respuesta
+        return res.status(200).send({
+            status: "success",
+            publication: publicationUpdated,
+            file: req.file,
+        })
+    })
+
+}// fin de upload
+
+// Devolver archivos multimedia imagenes
+const media = (req, res) => {
+    // Sacar el parametro de la url
+    const file = req.params.file
+
+    // Montar el path real de la imagen
+    const filePath = "./uploads/publications/" + file
+
+    // Comprobar que existe
+    fs.stat(filePath, (error, exists) => {
+
+        if (!exists) {
+            return res.status(404).send({
+                status: "error",
+                message: "No existe la imagen"
+            })
+        }
+
+        // Devolver un file
+        return res.sendFile(path.resolve(filePath))
+    })
+
+}// fin de media
+
+
+// Listar todas las publicaciones (FEED)
+const feed = async (req, res) => {
+    // Sacar la pagina actual
+    let page = 1
+
+    if (req.params.page) {
+        page = req.params.page
+    }
+
+    // Establecer numero de elementos por pagina
+    let itemsPerPage = 5
+
+    // Sacar un array de identificadores de usuarios que yo sigo como usuario logueado
+    try {
+        const myFollows = await followService.followUserIds(req.user.id)
+
+        // Find a publicaciones in, ordenar, popular, paginar
+        const publications = Publication.find({ user: myFollows.following })
+            .populate("user", "-password -role -__v -email")
+            .sort("-created_at")
+            .paginate(page, itemsPerPage, (error, publications, total) => {
+
+                if(error || !publications){
+                    return res.status(500).send({
+                        status: "error",
+                        message: "No hay publicaciones para mostrar",
+                    })
+                }
+
+                return res.status(200).send({
+                    status: "success",
+                    message: "Feed de publicaciones",
+                    following: myFollows.following,
+                    total,
+                    page,
+                    pages: Math.ceil(total / itemsPerPage),
+                    publications
+                })
+            })
+
+    } catch (error) {
+
+        return res.status(500).send({
+            status: "error",
+            message: "Error al obtener usuarios que sigues",
+        })
+    }
+
+}// fin de feed 
+
 
 
 
@@ -143,5 +271,8 @@ module.exports = {
     save,
     detail,
     remove,
-    user
+    user,
+    upload,
+    media,
+    feed
 }
