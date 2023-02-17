@@ -49,7 +49,7 @@ const save = (req, res) => {
 const detail = (req, res) => {
     
     // Sacar id de publicacion de la url
-    const publicationId = req.params.id;
+    const publicationId = req.params.id
 
     // Find con la condicion del id
     Publication.findById(publicationId, (error, publicationStored) => {
@@ -66,14 +66,14 @@ const detail = (req, res) => {
             status: "success",
             message: "Mostrar publicacion",
             publication: publicationStored
-        });
-    });
+        })
+    })
 }// fin de detail
 
 // Eliminar publicaciones
 const remove = (req, res) => {
     // Sacar el id del publicacion a eliminar
-    const publicationId = req.params.id;
+    const publicationId = req.params.id
 
     // Find y luego un remove
     Publication.find({ "user": req.user.id, "_id": publicationId }).remove(error => {
@@ -81,7 +81,7 @@ const remove = (req, res) => {
             return res.status(500).send({
                 status: "error",
                 message: "No se ha eliminado la publicacion"
-            });
+            })
         }
 
         // Devolver respuesta
@@ -89,10 +89,52 @@ const remove = (req, res) => {
             status: "success",
             message: "Eliminar publicacion",
             publication: publicationId
-        });
-    });
+        })
+    })
 
 }// fin de remove
+
+// listar publicaciones de un usuario
+const user = (req, res) => {
+    // Sacar el id de usuario
+    const userId = req.params.id
+
+    // Controlar la pagina
+    let page = 1
+
+    if (req.params.page) page = req.params.page
+
+    const itemsPerPage = 5
+
+    // Find, populate, ordenar, paginar
+    Publication.find({ "user": userId })
+        .sort("-created_at")
+        .populate('user', '-password -__v -role -email')
+        .paginate(page, itemsPerPage, (error, publications, total) => {
+
+            if (error || !publications || publications.length <= 0) {
+                return res.status(404).send({
+                    status: "error",
+                    message: "No hay publicaciones para mostrar"
+                })
+            }
+
+            // Devolver respuesta
+            return res.status(200).send({
+                status: "success",
+                message: "Publicaciones del perfil de un usuario",
+                page,
+                total,
+                pages: Math.ceil(total / itemsPerPage),
+                publications,
+
+            })
+        })
+}// fin de user
+
+
+
+
 
 
 // Exportar acciones
@@ -101,4 +143,5 @@ module.exports = {
     save,
     detail,
     remove,
+    user
 }
